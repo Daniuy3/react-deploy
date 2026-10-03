@@ -1,75 +1,88 @@
-# React + TypeScript + Vite
+# React Deploy
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación React + TypeScript creada con Vite. En producción se compila en una
+primera etapa de Docker y el resultado estático se sirve con nginx en una
+imagen ligera independiente.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Para trabajar en local necesitas:
 
-## React Compiler
+- Node.js 22 o superior.
+- npm.
+- Docker Engine y Docker Compose, para desplegar con contenedores.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Ejecutar en desarrollo
 
-## Expanding the ESLint configuration
+Instala las dependencias y arranca el servidor de Vite:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Abre la URL que muestra Vite, normalmente `http://localhost:5173`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Comprobar el proyecto
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+El build ejecuta primero el chequeo de TypeScript y después genera los archivos
+de producción en `dist`:
 
+```bash
+npm run build
 ```
+
+También puedes ejecutar el linter:
+
+```bash
+npm run lint
+```
+
+## Desplegar con Docker Compose
+
+El despliegue utiliza dos etapas definidas en el `Dockerfile`:
+
+1. `builder`: instala las dependencias y ejecuta `npm run build`.
+2. `production`: copia `dist` a nginx y publica la aplicación por el puerto 80
+   dentro del contenedor.
+
+Construye la imagen y arranca el servicio con:
+
+```bash
+docker compose up --build -d
+```
+
+La aplicación estará disponible en:
+
+```text
+http://localhost:8080
+```
+
+El archivo `nginx.conf` incluye un fallback a `index.html`, necesario para que
+las rutas de una aplicación SPA de React funcionen al recargar la página.
+
+Para ver el estado y los logs:
+
+```bash
+docker compose ps
+docker compose logs -f web
+```
+
+Para detener y eliminar el contenedor:
+
+```bash
+docker compose down
+```
+
+## Cambiar el puerto publicado
+
+El puerto del equipo anfitrión se configura en `docker-compose.yml`. Por
+ejemplo, para usar el puerto `3000`, cambia:
+
+```yaml
+ports:
+  - "3000:80"
+```
+
+El puerto `80` a la derecha debe mantenerse porque nginx escucha en ese puerto
+dentro del contenedor.
